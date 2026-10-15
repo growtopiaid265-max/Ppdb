@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PPDB Online</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--tx:#1b2433;--mu:#5d6b82;--bd:#d9e0ec;--pr:#1f5fd1;--prt:#fff;--ok:#18794e;--er:#c62828}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1521;--card:#18202f;--tx:#e8edf6;--mu:#98a6bd;--bd:#2b3750;--pr:#5b8cf0;--prt:#0b1220;--ok:#4cc38a;--er:#ff7b7b}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.w{max-width:720px;margin:0 auto;padding:16px}
+h1{font-size:1.4rem;margin:8px 0 2px}
+h2{font-size:1rem;margin:0 0 10px}
+.sub{color:var(--mu);margin:0 0 14px;font-size:.9rem}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:12px}
+label{display:block;font-size:.85rem;color:var(--mu);margin:10px 0 4px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--pr);outline-offset:1px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+@media (max-width:520px){.g{grid-template-columns:1fr}}
+.err{color:var(--er);font-size:.8rem;min-height:1em;margin-top:2px}
+.bt{padding:11px 16px;border:0;border-radius:10px;background:var(--pr);color:var(--prt);font:inherit;font-weight:600;cursor:pointer}
+.bt:disabled{opacity:.6;cursor:wait}
+.bt.s{background:transparent;color:var(--tx);border:1px solid var(--bd);font-weight:400}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.msg{padding:12px;border-radius:10px;margin-bottom:12px;background:var(--card);border:1px solid}
+.msg.ok{border-color:var(--ok);color:var(--ok)}
+.msg.bad{border-color:var(--er);color:var(--er)}
+.hid{display:none}
+.hp{position:absolute;left:-9999px;height:0;overflow:hidden}
+.mu{color:var(--mu);font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="w">
+<h1>Pendaftaran Siswa Baru</h1>
+<p class="sub">Tahun Ajaran 2027/2028 · Isi data dengan benar</p>
+
+<div id="box" class="msg hid"></div>
+
+<form id="f" class="card" novalidate onsubmit="return false">
+<h2>Data Calon Siswa</h2>
+<label for="nama">Nama lengkap</label><input id="nama" autocomplete="name"><div class="err" data-e="nama"></div>
+<div class="g">
+<div><label for="nisn">NISN (10 digit)</label><input id="nisn" inputmode="numeric" maxlength="10"><div class="err" data-e="nisn"></div></div>
+<div><label for="jk">Jenis kelamin</label><select id="jk"><option value="">Pilih</option><option>Laki-laki</option><option>Perempuan</option></select><div class="err" data-e="jk"></div></div>
+<div><label for="tmp">Tempat lahir</label><input id="tmp"><div class="err" data-e="tmp"></div></div>
+<div><label for="tgl">Tanggal lahir</label><input id="tgl" type="date"><div class="err" data-e="tgl"></div></div>
+</div>
+<label for="asal">Asal sekolah (SMP/MTs)</label><input id="asal"><div class="err" data-e="asal"></div>
+<label for="almt">Alamat lengkap</label><textarea id="almt" rows="2"></textarea><div class="err" data-e="almt"></div>
+<label for="jur">Jurusan pilihan</label>
+<select id="jur"><option value="">Pilih jurusan</option><option>Teknik Komputer dan Jaringan (TKJ)</option><option>Akuntansi</option><option>Pemasaran</option><option>Desain Komunikasi Visual</option></select><div class="err" data-e="jur"></div>
+
+<h2 style="margin-top:18px">Data Orang Tua / Wali</h2>
+<label for="ortu">Nama orang tua / wali</label><input id="ortu"><div class="err" data-e="ortu"></div>
+<div class="g">
+<div><label for="hp">No. HP / WhatsApp</label><input id="hp" type="tel" inputmode="tel"><div class="err" data-e="hp"></div></div>
+<div><label for="em">Email (opsional)</label><input id="em" type="email"><div class="err" data-e="em"></div></div>
+</div>
+
+<div class="hp" aria-hidden="true"><label>Jangan diisi<input id="website" tabindex="-1" autocomplete="off"></label></div>
+
+<div class="row"><button class="bt" id="kirim" type="button">Kirim Pendaftaran</button><button class="bt s" id="reset" type="button">Kosongkan</button></div>
+<p class="mu">Draf formulir tersimpan otomatis di browser ini sampai berhasil dikirim.</p>
+</form>
+</div>
+
+<script>
+// ====== PENGATURAN: tempel URL Web App dari Apps Script di sini ======
+var API_URL = "https://script.google.com/macros/s/AKfycbwScLjmFE_BVhjS633XePNbesyj1xgaTfV0a9BM0JHMNett9HhgK_OKo8W6ZUXG3IU/exec";
+// =====================================================================
+
+(function(){
+var KR="ppdb:draft";
+var F=["nama","nisn","jk","tmp","tgl","asal","almt","jur","ortu","hp","em"];
+var $=function(i){return document.getElementById(i)};
+var draft={},busy=false;
+try{draft=JSON.parse(localStorage.getItem(KR)||"{}")}catch(e){}
+function save(){try{localStorage.setItem(KR,JSON.stringify(draft))}catch(e){}}
+F.forEach(function(k){var e=$(k);if(draft[k])e.value=draft[k];
+e.addEventListener("input",function(){draft[k]=e.value;save()})});
+
+function validate(v){var e={};
+if(v.nama.trim().length<3)e.nama="Nama minimal 3 karakter";
+if(!/^\d{10}$/.test(v.nisn))e.nisn="NISN harus 10 digit angka";
+if(!v.jk)e.jk="Pilih jenis kelamin";
+if(!v.tmp.trim())e.tmp="Wajib diisi";
+if(!v.tgl)e.tgl="Wajib diisi";
+else{var y=(Date.now()-new Date(v.tgl))/31557600000;if(y<11||y>20)e.tgl="Usia tidak wajar (11-20 tahun)"}
+if(!v.asal.trim())e.asal="Wajib diisi";
+if(v.almt.trim().length<10)e.almt="Alamat minimal 10 karakter";
+if(!v.jur)e.jur="Pilih jurusan";
+if(v.ortu.trim().length<3)e.ortu="Wajib diisi";
+if(!/^(\+62|62|0)8\d{7,11}$/.test(v.hp.replace(/[\s-]/g,"")))e.hp="Nomor HP tidak valid (contoh 08123456789)";
+if(v.em&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.em))e.em="Format email salah";
+return e}
+
+function show(type,text){var b=$("box");b.className="msg "+type;b.textContent=text;window.scrollTo(0,0)}
+function clearErr(){document.querySelectorAll("[data-e]").forEach(function(d){d.textContent=""})}
+
+$("kirim").onclick=function(){
+if(busy)return;
+if(API_URL.indexOf("GANTI_")===0){show("bad","URL Web App belum diisi di index.html");return}
+var v={};F.forEach(function(k){v[k]=$(k).value});
+var er=validate(v);clearErr();
+document.querySelectorAll("[data-e]").forEach(function(d){d.textContent=er[d.getAttribute("data-e")]||""});
+var ks=Object.keys(er);if(ks.length){$(ks[0]).focus();return}
+v.website=$("website").value;
+busy=true;$("kirim").disabled=true;$("kirim").textContent="Mengirim...";
+// Content-Type text/plain agar tidak memicu preflight CORS
+fetch(API_URL,{method:"POST",body:JSON.stringify(v)})
+.then(function(r){return r.json()})
+.then(function(res){
+if(res.ok){
+draft={};save();F.forEach(function(k){$(k).value=""});
+show("ok","Pendaftaran berhasil. Nomor pendaftaran: "+res.no+". Simpan nomor ini.");
+}else{show("bad",res.error||"Gagal mengirim")}
+})
+.catch(function(){show("bad","Gagal terhubung. Cek internet lalu coba lagi. Data kamu masih tersimpan di formulir.")})
+.then(function(){busy=false;$("kirim").disabled=false;$("kirim").textContent="Kirim Pendaftaran"});
+};
+$("reset").onclick=function(){if(!confirm("Kosongkan semua isian?"))return;draft={};save();F.forEach(function(k){$(k).value=""});clearErr()};
+})();
+</script>
+</body>
+</html>
